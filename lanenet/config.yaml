@@ -1,0 +1,208 @@
+DATALOADER:
+  NUM_WORKERS: 1
+  TRAIN_DATA_SET:
+    CLS_NUM_PER_LANE: 56
+    FILE_NAME: train_gt.txt
+    GRIDING_NUM: 100
+    NAME: LaneClsDataset
+    NUM_LANES: 4
+    PATH: /home/thinkbook/workspace/Ultra-Fast-Lane-Detection/TUSimple/train_set
+    TRANSFORMERS:
+    - DIRECTION:
+      - horizontal
+      - vertical
+      NAME: RandomFlip
+      P: 0.3
+    - BORDER_VAL: 0
+      NAME: RandomAffine
+      P: 0.1
+      ROTATE_DEGREE_RANGE:
+      - -6
+      - -5
+      - -4
+      - -3
+      - -2
+      - -1
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      ROTATE_RANGE: false
+    - CROP_STEP: 0.05
+      MAX_CROP_RATIO: 0.25
+      MIN_CROP_RATIO: 0.05
+      NAME: RandomCrop
+      P: 0.8
+    - INTERPOLATION: INTER_LINEAR
+      IS_PADDING: false
+      KEEP_RATIO: false
+      NAME: Resize
+      TARGET_SIZE: &id001
+      - 288
+      - 800
+    - NAME: RandomCompress
+      P: 0.5
+      QUALITY_LOWER: 75
+      QUALITY_STEP: 5
+      QUALITY_UPPER: 85
+    - BLUR_LIMIT:
+      - 3
+      - 5
+      BLUR_P: 0.2
+      BRIGHTNESS_LIMIT:
+      - 0.5
+      - 1.2
+      BRIGHTNESS_P: 0.6
+      CLAHE_LIMIT: 4
+      CLAHE_P: 0.2
+      CONTRAST_LIMIT:
+      - 0.7
+      - 1.3
+      CONTRAST_P: 0.6
+      GAMMA_LIMIT:
+      - 0.3
+      - 2.0
+      GAMMA_P: 0.2
+      HUE_LIMIT: 0.1
+      HUE_P: 0.3
+      NAME: RandomColorJitter
+      SATURATION_LIMIT:
+      - 0.7
+      - 1.4
+      SATURATION_P: 0.6
+      SIGMA_LIMIT: 0
+    - NAME: Normalize
+  VAL_DATA_SET:
+    CLS_NUM_PER_LANE: 56
+    FILE_NAME: test_gt.txt
+    GRIDING_NUM: 100
+    NAME: LaneClsDataset
+    NUM_LANES: 4
+    PATH: /home/thinkbook/workspace/Ultra-Fast-Lane-Detection/TUSimple/test_set
+    TRANSFORMERS:
+    - INTERPOLATION: INTER_LINEAR
+      IS_PADDING: false
+      KEEP_RATIO: false
+      NAME: Resize
+      TARGET_SIZE: *id001
+    - NAME: RandomCompress
+      P: 0.5
+      QUALITY_LOWER: 75
+      QUALITY_STEP: 5
+      QUALITY_UPPER: 99
+    - NAME: Normalize
+OUTPUT_DIR: lanenet
+OUTPUT_LOG_NAME: engine.config.defaults
+SOLVER:
+  CHECKPOINT_PERIOD: 1
+  DISCRIMINATOR: {}
+  EMA:
+    DECAY_RATE: 0.995
+    ENABLED: false
+  GENERATOR:
+    CLIP_GRADIENTS:
+      CLIP_TYPE: value
+      CLIP_VALUE: 1.0
+      ENABLED: false
+      GROUP: false
+      NORM_TYPE: 2.0
+    LR_SCHEDULER:
+      ENABLED: true
+      PARAMS:
+        LR_SCHEDULER_PARAM:
+          GAMMA: 0.1
+          NAME: WarmupCosineLR
+          STEPS:
+          - 1000
+          - 1800
+        MAX_ITER: 2000
+        WARMUP_FACTOR: 0.01
+        WARMUP_ITER: 10
+      TYPE: LRMultiplierScheduler
+    OPTIMIZER:
+      PARAMS:
+        LR: 0.001
+        WEIGHT_DECAY: 0.0005
+      TYPE: AdamW
+  GRADIENT_ACCUMULATION_BATCH: -1
+  MAX_ITER: 2000
+  MAX_KEEP: 20
+  TEST_PER_BATCH: 4
+  TRAIN_PER_BATCH: 8
+  VAL_PER_BATCH: 8
+TRAINER:
+  DEVICE: cuda
+  ENABLE_EPOCH_METHOD: false
+  MODEL:
+    DISCRIMINATOR: {}
+    GENERATOR:
+      AUXILIARY:
+        AUX_CHANNEL: 128
+        IN_CHANNELS:
+        - 128
+        - 256
+        - 512
+        LOSS_CFG:
+          LOSS:
+          - NAME: GeneralizedCELoss
+            PARAM:
+              APPLY_SIGMOID: false
+              IGNORE_INDEX: 255
+              LAMBDA_WEIGHT: 1.0
+        NAME: LaneHeadAux
+        NUM_LANES: 4
+      DECODER:
+        CLS_CHANNEL: 1024
+        CLS_NUM_PER_LANE: 56
+        GRID_NUM: 100
+        IN_CHANNELS:
+        - 128
+        - 256
+        - 512
+        LOSS_CFG:
+          LOSS:
+          - NAME: SoftmaxFocalLoss
+            PARAM:
+              GAMMA: 2.0
+              IGNORE_INDEX: 255
+              LAMBDA_WEIGHT: 1.0
+          - INPUT_NAME:
+            - logits
+            NAME: SimilarityLoss
+            PARAM:
+              LAMBDA_WEIGHT: 1.0
+          - INPUT_NAME:
+            - logits
+            NAME: StraightLoss
+            PARAM:
+              LAMBDA_WEIGHT: 1.0
+        NAME: LaneHead
+        NUM_LANES: 4
+        POOL_CHANNEL: 8
+        SPP_LEVELS:
+        - 1
+        - 2
+        - 4
+        - 6
+      ENCODER:
+        DEPTH: 18
+        IN_CHANNELS: 3
+        NAME: ResNet
+        OUT_INDICES:
+        - 2
+        - 3
+        - 4
+        STEM_SHARP: false
+      IGNORE_INDEX: 255
+      NAME: EncoderDecoder
+    NAME: LaneModel
+  NAME: LaneTrainer
+  PARADIGM:
+    GLOBAL_RANK: 0
+    GPU_ID: null
+    NUM_PER_GPUS: 1
+    TYPE: NORMAL
+    WORLD_SIZE: 1
+  WEIGHTS: ''

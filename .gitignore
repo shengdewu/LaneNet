@@ -1,0 +1,8 @@
+# Python 相关
+__pycache__/
+*.pyc
+venv/
+
+# IDE 配置
+.idea/
+.vscode/
