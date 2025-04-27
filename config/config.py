@@ -4,7 +4,7 @@ _base_ = [
     './base/schedule/sgd_cosine.py',
 ]
 
-max_iter = 100
+max_iter = 24
 learning_rate = 4e-4
 
 dataloader = dict(

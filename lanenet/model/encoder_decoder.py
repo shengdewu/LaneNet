@@ -76,7 +76,7 @@ class EncoderDecoder(nn.Module):
 
         result = dict()
         result['logits'] = logits
-        result['acc'] = accuracy.acc_topk(logits, label['label'], 2)
+        result['acc'] = accuracy.acc_topk(torch.argmax(logits, dim=1), label['label'], 2)
 
         if self.with_auxiliary:
             if isinstance(self.auxiliary, nn.ModuleList):
@@ -91,16 +91,8 @@ class EncoderDecoder(nn.Module):
 
     def forward(self, img: Tensor):
         x = self.extract_feature(img)
-        seg_pred = self.decoder(x, img.shape[2:])
-
-        if seg_pred.shape[1] == 1:
-            seg_pred = F.sigmoid(seg_pred)
-        else:
-            seg_pred = seg_pred.argmax(dim=1).unsqueeze(1)
-            if self.out_type is not None and seg_pred.dtype != self.out_type:
-                # 推荐只在推理使用, 节约内存
-                seg_pred = seg_pred.to(self.out_type)
-        return seg_pred
+        logits = self.decoder(x, img.shape[2:])
+        return logits
 
     def preparate_deploy(self):
         if self.with_auxiliary:

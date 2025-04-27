@@ -20,6 +20,7 @@ class LaneClsDataset(Dataset):
                        168, 172, 176, 180, 184, 188, 192, 196, 200, 204, 208, 212, 216,
                        220, 224, 228, 232, 236, 240, 244, 248, 252, 256, 260, 264, 268,
                        272, 276, 280, 284]
+    ROW_H = 288
     """
     在h=288下的anchor
     """
@@ -180,7 +181,14 @@ class LaneClsDataset(Dataset):
             all_idx_cp[i, pos:, 1] = fitted
         return all_idx_cp
 
-    def to_pts(self, cls_group, img_shape, col_sample_step):
+    def to_pts(self, cls_group, img_shape, col_sample_step, in_width=800):
+        """
+        :param cls_group:
+        :param img_shape: 原始图像
+        :param col_sample_step:
+        :param in_width:  网络的输入宽
+        :return:
+        """
         h, w = img_shape
         anchors, nums = cls_group.shape
         pts = list()
@@ -191,6 +199,6 @@ class LaneClsDataset(Dataset):
                 if cls_group[k, i] < 0:
                     continue
 
-                p = (int(cls_group[k, i] * col_sample_step * w / 800) - 1, int(h * (self.ROW_ANCHOR_H288[k] / 288)) - 1)
+                p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1, int(h * (self.ROW_ANCHOR_H288[k] / self.ROW_H)) - 1)
                 pts.append(p)
         return pts

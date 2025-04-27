@@ -103,10 +103,6 @@ class LaneHead(BaseHead):
         feat = self.pool(x_stages[-1])
         out = self.cls(feat)
         out = out.view(-1, *self.cls_group)
-
-        if not self.training:
-            out = torch.argmax(out, dim=1)
-
         return out
 
     def forward_train(self, x_stages, shape, gt_group_cls) -> torch.Tensor:

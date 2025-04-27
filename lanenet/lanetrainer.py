@@ -30,15 +30,23 @@ class LaneTrainer(BaseTrainer):
             col_sample_step = batch['col_sample_step']
             grid_num = batch['grid_num']
 
-            logits = result['logits'].cpu()
-            logits_seg = result['aux_logits'].cpu()
+            logits = result['logits'].detach().cpu()
+            logits_seg = result['aux_logits'].detach().cpu()
             cls_acc.append(result['acc'])
             seg_acc.append(result['aux_acc'])
 
-            logits[logits == grid_num[0]] = 0
-
             bs, c, h, w = img.shape
-            bs, anchors, nums = logits.shape
+            bs, cls_nums, anchors, nums = logits.shape
+
+            # logits = torch.flip(logits, dims=[2])
+            prob = torch.softmax(logits[:, :-1, ...], dim=1)
+            idx = torch.arange(1, grid_num[0] + 1).unsqueeze(0)
+            idx = idx.repeat(bs, 1)
+            idx = idx.reshape(bs, -1, 1, 1)
+            loc = torch.sum(prob * idx, dim=1)
+            logits = torch.argmax(logits, dim=1)
+            loc[logits == grid_num[0]] = 0
+
             imgs = list()
             for b in range(bs):
                 im = img[b].cpu().permute(1, 2, 0).numpy().astype(np.uint8)
@@ -48,7 +56,7 @@ class LaneTrainer(BaseTrainer):
                 for pt in pts:
                     cv2.circle(im, pt, 5, (0, 255, 0), -1)
 
-                pts = self.test_data_loader.dataset.to_pts(logits[b].numpy(), (h, w), col_sample_step[b])
+                pts = self.test_data_loader.dataset.to_pts(loc[b].numpy(), (h, w), col_sample_step[b])
                 for pt in pts:
                     cv2.circle(im, pt, 5, (255, 0, 0), -1)
 
@@ -77,7 +85,8 @@ class LaneTrainer(BaseTrainer):
             img_sample = torch.cat((img, fake_seg, gt_seg), -1)
             self.save_image(img_sample, f'{self.output}/{i}-seg.jpg', False, nrow=1, normalize=False)
 
-        logging.getLogger(self.default_log_name).info(f'test cls acc = {sum(cls_acc)/len(cls_acc)}, seg acc = {sum(cls_acc)/len(cls_acc)}')
+        logging.getLogger(self.default_log_name).info(
+            f'test cls acc = {sum(cls_acc) / len(cls_acc)}, seg acc = {sum(cls_acc) / len(cls_acc)}')
         return
 
     def iterate_after(self, epoch):
