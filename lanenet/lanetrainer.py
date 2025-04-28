@@ -1,5 +1,3 @@
-import time
-
 from engine.trainer.trainer import BaseTrainer
 import logging
 from engine.trainer.build import BUILD_TRAINER_REGISTRY

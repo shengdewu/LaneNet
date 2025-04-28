@@ -17,7 +17,7 @@ trainer = dict(
 )
 
 solver = dict(
-    train_per_batch=16,
+    train_per_batch=8,
     test_per_batch=8,
     max_iter=max_iter,
     checkpoint_period=1,
@@ -44,4 +44,4 @@ solver = dict(
     )
 )
 
-output_dir = 'checkpoint/lanenet'
+output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-test'

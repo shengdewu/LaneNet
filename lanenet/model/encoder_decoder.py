@@ -1,11 +1,10 @@
 from engine.model.build import BUILD_NETWORK_REGISTRY
 from engine.model.build import build_network
-import torch.nn.functional as F
 import torch.nn as nn
 from torch import Tensor
 import torch
 from typing import Dict, Optional, Union, List, Tuple
-import lanenet.model.utils.accuracy as accuracy
+from .utils import acc_topk, accuracy_multi_class
 
 __all__ = [
     'EncoderDecoder'
@@ -76,7 +75,7 @@ class EncoderDecoder(nn.Module):
 
         result = dict()
         result['logits'] = logits
-        result['acc'] = accuracy.acc_topk(torch.argmax(logits, dim=1), label['label'], 2)
+        result['acc'] = acc_topk(torch.argmax(logits, dim=1), label['label'], 2)
 
         if self.with_auxiliary:
             if isinstance(self.auxiliary, nn.ModuleList):
@@ -85,7 +84,7 @@ class EncoderDecoder(nn.Module):
                 logits = self.auxiliary(x, img.shape[2:])
 
             result['aux_logits'] = logits
-            result['aux_acc'] = accuracy.accuracy_multi_class(logits.detach(), label['aux_label'], 1).item()
+            result['aux_acc'] = accuracy_multi_class(logits.detach(), label['aux_label'], 1).item()
 
         return result
 

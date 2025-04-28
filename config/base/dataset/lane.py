@@ -1,4 +1,4 @@
-img_root = '/home/thinkbook/workspace/Ultra-Fast-Lane-Detection/TUSimple'
+img_root = '/home/thinkbook/workspace/datasets/TUSimple'
 num_workers = 1
 img_size = (288, 800)
 num_classes = 4
