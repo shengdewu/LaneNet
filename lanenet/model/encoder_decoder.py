@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 import torch
 from typing import Dict, Optional, Union, List, Tuple
-from .utils import acc_topk, accuracy_multi_class
+from .utils import acc_topk
 
 __all__ = [
     'EncoderDecoder'
@@ -75,7 +75,11 @@ class EncoderDecoder(nn.Module):
 
         result = dict()
         result['logits'] = logits
-        result['acc'] = acc_topk(torch.argmax(logits, dim=1), label['label'], 2)
+
+        """
+        车道线的坐标，在x轴上被分成101类（0-100），100 是背景
+        """
+        result['acc'] = acc_topk(torch.argmax(logits, dim=1), label['label'], logits.shape[1]-1)
 
         if self.with_auxiliary:
             if isinstance(self.auxiliary, nn.ModuleList):
@@ -84,7 +88,7 @@ class EncoderDecoder(nn.Module):
                 logits = self.auxiliary(x, img.shape[2:])
 
             result['aux_logits'] = logits
-            result['aux_acc'] = accuracy_multi_class(logits.detach(), label['aux_label'], 1).item()
+            result['aux_acc'] = acc_topk(torch.argmax(logits, dim=1), label['aux_label'], 0).item()
 
         return result
 

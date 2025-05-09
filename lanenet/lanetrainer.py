@@ -50,11 +50,11 @@ class LaneTrainer(BaseTrainer):
                 im = img[b].cpu().permute(1, 2, 0).numpy().astype(np.uint8)
                 im = np.ascontiguousarray(im)
 
-                pts = self.test_data_loader.dataset.to_pts(cls[b].numpy(), (h, w), col_sample_step[b])
+                pts = self.test_data_loader.dataset.to_pts(cls[b].numpy(), (h, w), col_sample_step[b], w)
                 for pt in pts:
                     cv2.circle(im, pt, 5, (0, 255, 0), -1)
 
-                pts = self.test_data_loader.dataset.to_pts(loc[b].numpy(), (h, w), col_sample_step[b])
+                pts = self.test_data_loader.dataset.to_pts(loc[b].numpy(), (h, w), col_sample_step[b], w)
                 for pt in pts:
                     cv2.circle(im, pt, 5, (255, 0, 0), -1)
 
