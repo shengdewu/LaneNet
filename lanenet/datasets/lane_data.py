@@ -124,8 +124,8 @@ class LaneClsDataset(Dataset):
     def _get_index(self, label):
         h, w = label.shape[:2]
 
-        if h != 288:
-            scale = lambda x: int((x * 1.0 / 288) * h)
+        if h != self.row_h:
+            scale = lambda x: int((x * 1.0 / self.row_h) * h)
             sample_tmp = list(map(scale, self.row_anchor))
         else:
             sample_tmp = self.row_anchor
