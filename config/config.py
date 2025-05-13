@@ -1,20 +1,28 @@
-_base_ = [
-    './base/model/lane_regseg.py',
-    './base/schedule/sgd_cosine.py',
-]
+import json
 
-img_root = '/home/thinkbook/workspace/datasets/pidai'
+lane_config = 'config/base/dataset/lane.json'
+with open(lane_config, mode='r') as f:
+    cfg = json.load(f)
+
+cls_num_per_lane = len(cfg['row_anchor'])
+griding_num = cfg['griding_num']
+
 num_lanes = 2
 batch_size = 8
 num_workers = 4
-img_size = (608, 608)
-griding_num = 100
-max_iter = 100
-enable_epoch_method = True
+img_size = (384, 640)
+max_iter = 5000
+warmup_iter = 100
+checkpoint_period = 200
+is_poly = True
+steps = [2500, 3500, 4500]  # is multi
+enable_epoch_method = False
 learning_rate = 4e-4
-grid_num = 100
 ignore_index = 255
 cls_channel = 512
+
+img_root = '/home/thinkbook/workspace/datasets/pidai-2'
+output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai-poly-21'
 
 t_transformer = [
     dict(
@@ -70,8 +78,7 @@ v_transformer = [
     dict(name='Resize',
          interpolation='INTER_LINEAR',
          target_size=img_size,
-         keep_ratio=False,
-         is_padding=False),
+         keep_ratio=False),
     dict(
         name='RandomCompress',
         quality_lower=75,
@@ -88,8 +95,7 @@ dataloader = dict(
     train_data_set=dict(
         name='LaneClsDataset',
         path=img_root,
-        cls_num_per_lane=56,
-        griding_num=griding_num,
+        lane_config=lane_config,
         num_lanes=num_lanes,
         file_name='train_part1.txt',
         transformers=t_transformer,
@@ -97,8 +103,7 @@ dataloader = dict(
     val_data_set=dict(
         name='LaneClsDataset',
         path=img_root,
-        cls_num_per_lane=56,
-        griding_num=griding_num,
+        lane_config=lane_config,
         num_lanes=num_lanes,
         file_name='test_part1.txt',
         transformers=v_transformer,
@@ -128,18 +133,18 @@ model = dict(
     decoder=dict(
         name='LaneHead',
         in_channels=[48, 120, 384],
-        grid_num=grid_num,
+        grid_num=griding_num,
         num_lanes=num_lanes,
-        cls_num_per_lane=56,
+        cls_num_per_lane=cls_num_per_lane,
         cls_channel=cls_channel,
         pool_channel=8,
-        spp_levels=(1, 2, 4, 6),
+        spp_levels=(1, 2, 4, 8),
         loss_cfg=dict(
             loss=[
                 dict(name='SoftmaxFocalLoss',
                      param=dict(gamma=2.0, lambda_weight=1.0, ignore_index=ignore_index)),
-                dict(name='SimilarityLoss', param=dict(lambda_weight=1.0), input_name=['logits']),
-                dict(name='StraightLoss', param=dict(lambda_weight=1.0), input_name=['logits']),
+                dict(name='SimilarityLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
+                dict(name='StraightLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
             ]
         )
     ),
@@ -159,7 +164,7 @@ model = dict(
 trainer = dict(
     name='LaneTrainer',
     weights='',
-    device='cuda',
+    device='cpu',
     enable_epoch_method=enable_epoch_method,
     model=dict(
         name='LaneModel',
@@ -167,32 +172,61 @@ trainer = dict(
     )
 )
 
-solver = dict(
-    train_per_batch=batch_size,
-    test_per_batch=4,
-    max_iter=max_iter,
-    checkpoint_period=1,
-    generator=dict(
-        lr_scheduler=dict(
-            enabled=True,
-            type='WarmupPolynomialDecay',
-            params=dict(
-                max_iter=max_iter * 400,
-                warmup_factor=0.01,
-                warmup_iter=100,
-                power=0.9,
-                end_lr=0.00001,
-                simple=True
-            )
-        ),
-        optimizer=dict(
-            type='Adam',
-            params=dict(
-                lr=learning_rate,
-                weight_decay=5E-4,
-            )
+multi_sgd = dict(
+    lr_scheduler=dict(
+        enabled=True,
+        type='LRMultiplierScheduler',
+        params=dict(
+            lr_scheduler_param=dict(
+                name='WarmupCosineLR',
+                gamma=0.1,
+                steps=steps,
+            ),
+            warmup_factor=0.01,
+            warmup_iter=warmup_iter,
+            max_iter=max_iter,
+        )
+    ),
+    optimizer=dict(
+        type='SGD',
+        params=dict(
+            momentum=0.9,
+            lr=learning_rate,
+            weight_decay=5E-4,
+        )
+    ),
+    clip_gradients=dict(
+        enabled=False,
+    ),
+)
+
+poly_adam = dict(
+    lr_scheduler=dict(
+        enabled=True,
+        type='WarmupPolynomialDecay',
+        params=dict(
+            max_iter=max_iter,
+            warmup_factor=0.01,
+            warmup_iter=warmup_iter,
+            power=0.9,
+            end_lr=0.00001,
+            simple=True
+        )
+    ),
+    optimizer=dict(
+        type='Adam',
+        params=dict(
+            lr=learning_rate,
+            weight_decay=5E-4,
         )
     )
 )
 
-output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai'
+solver = dict(
+    train_per_batch=batch_size,
+    test_per_batch=4,
+    max_iter=max_iter,
+    max_keep=20,
+    checkpoint_period=checkpoint_period,
+    generator=poly_adam if is_poly else multi_sgd
+)

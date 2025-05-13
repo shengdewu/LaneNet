@@ -7,6 +7,7 @@ import engine.transforms.functional as F
 from engine.data.build import BUILD_DATASET_REGISTRY
 from engine.transforms import TransformCompose
 import os
+import json
 
 __all__ = [
     'LaneClsDataset'
@@ -15,30 +16,23 @@ __all__ = [
 
 @BUILD_DATASET_REGISTRY.register()
 class LaneClsDataset(Dataset):
-    ROW_ANCHOR_H288 = [64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112,
-                       116, 120, 124, 128, 132, 136, 140, 144, 148, 152, 156, 160, 164,
-                       168, 172, 176, 180, 184, 188, 192, 196, 200, 204, 208, 212, 216,
-                       220, 224, 228, 232, 236, 240, 244, 248, 252, 256, 260, 264, 268,
-                       272, 276, 280, 284]
-    ROW_H = 288
-    """
-    在h=288下的anchor
-    """
 
     def __init__(self, path,
                  file_name,
-                 cls_num_per_lane,
+                 lane_config,
                  transformers: List = None,
-                 griding_num=50,
                  num_lanes=4,
                  ):
         super(LaneClsDataset, self).__init__()
 
-        assert cls_num_per_lane == len(self.ROW_ANCHOR_H288), f'{cls_num_per_lane} != {len(self.ROW_ANCHOR_H288)}'
+        with open(lane_config, mode='r') as f:
+            cfg = json.load(f)
+        self.griding_num = cfg['griding_num']
+        self.row_anchor = cfg['row_anchor']
+        self.row_h = cfg['row_h']
 
         self.transforms = TransformCompose(transformers)
         self.path = path
-        self.griding_num = griding_num
         self.num_lanes = num_lanes
 
         with open(f'{path}/{file_name}', 'r') as f:
@@ -132,9 +126,9 @@ class LaneClsDataset(Dataset):
 
         if h != 288:
             scale = lambda x: int((x * 1.0 / 288) * h)
-            sample_tmp = list(map(scale, self.ROW_ANCHOR_H288))
+            sample_tmp = list(map(scale, self.row_anchor))
         else:
-            sample_tmp = self.ROW_ANCHOR_H288
+            sample_tmp = self.row_anchor
 
         all_idx = np.zeros((self.num_lanes, len(sample_tmp), 2))
         for i, r in enumerate(sample_tmp):
@@ -199,6 +193,7 @@ class LaneClsDataset(Dataset):
                 if cls_group[k, i] < 0:
                     continue
 
-                p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1, int(h * (self.ROW_ANCHOR_H288[k] / self.ROW_H)) - 1)
+                p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1,
+                     int(h * (self.row_anchor[k] / self.row_h)) - 1)
                 pts.append(p)
         return pts
