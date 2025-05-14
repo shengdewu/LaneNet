@@ -101,5 +101,5 @@ class EncoderDecoder(nn.Module):
         if self.with_auxiliary:
             delattr(self, 'auxiliary')
             self.with_auxiliary = False
-        self.decoder.preparate_deploy()
+        # self.decoder.preparate_deploy()
         return

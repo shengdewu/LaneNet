@@ -6,12 +6,13 @@ with open(lane_config, mode='r') as f:
 
 cls_num_per_lane = len(cfg['row_anchor'])
 griding_num = cfg['griding_num']
-
 num_lanes = 2
+pool_channel = 16
+cls_channel = 512
+
 batch_size = 8
 num_workers = 4
-img_size = (384, 640) # (384, 768)
-pool_channel = 16
+img_size = (384, 640)
 max_iter = 5000
 warmup_iter = 100
 checkpoint_period = 200
@@ -20,7 +21,7 @@ steps = [2500, 3500, 4500]  # is multi
 enable_epoch_method = False
 learning_rate = 4e-4
 ignore_index = 255
-cls_channel = 512
+
 
 img_root = '/home/thinkbook/workspace/datasets/pidai-2'
 output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai-poly'
