@@ -1,6 +1,6 @@
 import json
 
-lane_config = 'config/base/dataset/lane.json'
+lane_config = '/home/thinkbook/workspace/LaneNet/config/base/dataset/pidai.json'
 with open(lane_config, mode='r') as f:
     cfg = json.load(f)
 
@@ -10,7 +10,8 @@ griding_num = cfg['griding_num']
 num_lanes = 2
 batch_size = 8
 num_workers = 4
-img_size = (384, 640)
+img_size = (384, 640) # (384, 768)
+pool_channel = 16
 max_iter = 5000
 warmup_iter = 100
 checkpoint_period = 200
@@ -22,7 +23,7 @@ ignore_index = 255
 cls_channel = 512
 
 img_root = '/home/thinkbook/workspace/datasets/pidai-2'
-output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai-poly-21'
+output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai-poly'
 
 t_transformer = [
     dict(
@@ -137,12 +138,12 @@ model = dict(
         num_lanes=num_lanes,
         cls_num_per_lane=cls_num_per_lane,
         cls_channel=cls_channel,
-        pool_channel=8,
+        pool_channel=pool_channel,
         spp_levels=(1, 2, 4, 8),
         loss_cfg=dict(
             loss=[
                 dict(name='SoftmaxFocalLoss',
-                     param=dict(gamma=2.0, lambda_weight=1.0, ignore_index=ignore_index)),
+                     param=dict(gamma=2.0, lambda_weight=10.0, ignore_index=ignore_index)),
                 dict(name='SimilarityLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
                 dict(name='StraightLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
             ]
@@ -164,7 +165,7 @@ model = dict(
 trainer = dict(
     name='LaneTrainer',
     weights='',
-    device='cpu',
+    device='cuda',
     enable_epoch_method=enable_epoch_method,
     model=dict(
         name='LaneModel',

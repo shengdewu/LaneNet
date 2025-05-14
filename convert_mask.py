@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import shutil
 
 import cv2
@@ -61,8 +62,46 @@ def convert_mask(in_path, out_path):
     return
 
 
+def create_anchor(in_path, cls_lane=56):
+    json_names = [name for name in os.listdir(in_path) if name.endswith('json')]
+    row_anchor = dict()
+    for name in json_names:
+        with open(f'{in_path}/{name}', mode='r') as f:
+            anns = json.load(f)
+
+        height = anns['imageHeight']
+        if row_anchor.get(height, None) is None:
+            row_anchor[height] = list()
+
+        for shape in anns['shapes']:
+            pts = [pt[1] for pt in shape['points']]
+            pts = sorted(pts, reverse=False)
+            row_anchor[height].append(pts[0])
+
+    for key, vals in row_anchor.items():
+        vals = sorted(vals, reverse=False)
+        print(f'{key} ({min(vals)},{max(vals)}) {vals[len(vals)//2]} {sum(vals)/len(vals)}')
+
+    step = 1080 // cls_lane
+    print([i for i in range(step, 1080, step)])
+
+
 if __name__ == '__main__':
     in_root = '/home/thinkbook/workspace/datasets/pidai-src'
     out_root = '/home/thinkbook/workspace/datasets/pidai-2'
     convert_mask(in_root, out_root)
+    # create_anchor(in_root, 60)
+
+    names = [name for name in os.listdir(out_root) if name.endswith('png')]
+    random.shuffle(names)
+    idx = int(len(names) * 0.9)
+    with open(f'{out_root}/train_part1.txt', mode='w') as f:
+        for name in names[: idx]:
+            arr = name.split('.')
+            f.write(f'{arr[0]}.jpg {arr[0]}.png\n')
+
+    with open(f'{out_root}/test_part1.txt', mode='w') as f:
+        for name in names[idx: ]:
+            arr = name.split('.')
+            f.write(f'{arr[0]}.jpg {arr[0]}.png\n')
 
