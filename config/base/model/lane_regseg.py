@@ -1,6 +1,9 @@
 # model settings
-num_lanes = 4
-grid_num = 100
+cls_num_per_lane = 59
+griding_num = 100
+num_lanes = 2
+pool_channel = 16
+cls_channel = 512
 ignore_index = 255
 
 model = dict(
@@ -26,18 +29,18 @@ model = dict(
     decoder=dict(
         name='LaneHead',
         in_channels=[48, 120, 384],
-        grid_num=grid_num,
+        grid_num=griding_num,
         num_lanes=num_lanes,
-        cls_num_per_lane=56,
-        cls_channel=1024,
-        pool_channel=8,
-        spp_levels=(1, 2, 4, 6),
+        cls_num_per_lane=cls_num_per_lane,
+        cls_channel=cls_channel,
+        pool_channel=pool_channel,
+        spp_levels=(1, 2, 4, 8),
         loss_cfg=dict(
             loss=[
                 dict(name='SoftmaxFocalLoss',
-                     param=dict(gamma=2.0, lambda_weight=1.0, ignore_index=ignore_index)),
-                dict(name='SimilarityLoss', param=dict(lambda_weight=1.0), input_name=['logits']),
-                dict(name='StraightLoss', param=dict(lambda_weight=1.0), input_name=['logits']),
+                     param=dict(gamma=2.0, lambda_weight=10.0, ignore_index=ignore_index)),
+                dict(name='SimilarityLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
+                dict(name='StraightLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
             ]
         )
     ),
