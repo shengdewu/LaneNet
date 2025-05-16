@@ -20,7 +20,6 @@ class BaseHead(nn.Module):
         if loss_cfg is not None:
             self.with_loss = True
             self.loss_fn = LossKeyCompose(loss_cfg)
-        self.loss_key = loss_cfg.keys()
         return
 
     @abc.abstractmethod
@@ -31,3 +30,9 @@ class BaseHead(nn.Module):
         x = self(x_stages, shape)
         loss = self.loss_fn(dict(loss=[(x, gt_semantic_seg)]))
         return loss
+
+    def prepare_deploy(self):
+        if self.with_loss:
+            delattr(self, 'loss_fn')
+            self.with_loss = False
+        return

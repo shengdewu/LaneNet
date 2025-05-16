@@ -97,9 +97,9 @@ class EncoderDecoder(nn.Module):
         logits = self.decoder(x, img.shape[2:])
         return logits
 
-    def preparate_deploy(self):
+    def prepare_deploy(self):
         if self.with_auxiliary:
             delattr(self, 'auxiliary')
             self.with_auxiliary = False
-        # self.decoder.preparate_deploy()
+        self.decoder.prepare_deploy()
         return

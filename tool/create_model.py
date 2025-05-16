@@ -41,6 +41,6 @@ def create_encoder_decoder(cfg_path: str, checkpoint: str = '', device: str = ''
         state_dict = torch.load(checkpoint)
         model.load_state_dict(state_dict['model']['g_model'])
     model = model.to(device)
-    model.preparate_deploy()
+    model.prepare_deploy()
     model.eval()
     return model
