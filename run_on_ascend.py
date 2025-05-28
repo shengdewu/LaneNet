@@ -178,6 +178,7 @@ class PDModel:
                 396, 414, 432, 450, 468, 486, 504, 522, 540, 558, 576, 594, 612, 630, 648, 666, 684, 702, 720, 738,
                 756, 774, 792, 810, 828, 846, 864, 882, 900, 918, 936, 954, 972, 990, 1008, 1026, 1044, 1062]
         self.row_h = 1080   
+        self.grid = 100
 
         if mode_path is None:
             mode_path = '/home/ckp/pidai_bs1.om'
@@ -217,13 +218,10 @@ class PDModel:
         return pts
 
 
-    def __call__(self, img_bgr):
-        w = 640
-        h = 384
-        grid = 100
+    def __call__(self, img_bgr, in_w=640, in_h=384):
         # img_bgr = cv2.imread(file_name, cv2.IMREAD_COLOR)
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img_rgb, dsize=(w, h), interpolation=cv2.INTER_LINEAR)
+        img = cv2.resize(img_rgb, dsize=(in_w, in_h), interpolation=cv2.INTER_LINEAR)
 
         in_np = np.stack([img.astype(np.float32) / 255])
         in_np = in_np.transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW, (n, 3, h, w)
@@ -241,17 +239,17 @@ class PDModel:
 
         # logits = torch.flip(logits, dims=[2])
         prob = self.softmax(logits[:, :-1, ...], axis=1)
-        idx = np.arange(1, grid + 1)[np.newaxis, ...]
+        idx = np.arange(1, self.grid + 1)[np.newaxis, ...]
         idx = idx.repeat(bs, 1)
         idx = idx.reshape(bs, -1, 1, 1)
         loc = np.sum(prob * idx, axis=1)
         logits = np.argmax(logits, axis=1)
-        loc[logits == grid] = 0
+        loc[logits == self.grid] = 0
 
-        col_sample = np.linspace(0, w - 1, grid)
+        col_sample = np.linspace(0, in_w - 1, self.grid)
         step = col_sample[1] - col_sample[0]
 
-        pts = self.to_pts(loc[0], (h, w), step, w)
+        pts = self.to_pts(loc[0], (in_h, in_w), step, in_w)
         for pt in pts:
             cv2.circle(img, pt, 5, (255, 0, 0), -1)
 
