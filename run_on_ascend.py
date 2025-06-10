@@ -10,7 +10,6 @@ import os
 import re
 
 
-
 # 封装acl模型推理过程为OMNet类
 class OMNet:
     ACL_MEM_MALLOC_HUGE_FIRST = 0
@@ -169,23 +168,23 @@ class OMNet:
         # acl去初始化
         ret = acl.finalize()
         return
-    
 
 
 class PDModel:
     def __init__(self, mode_path, output):
-        self.row_anchor = [18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252, 270, 288, 306, 324, 342, 360, 378,
-                396, 414, 432, 450, 468, 486, 504, 522, 540, 558, 576, 594, 612, 630, 648, 666, 684, 702, 720, 738,
-                756, 774, 792, 810, 828, 846, 864, 882, 900, 918, 936, 954, 972, 990, 1008, 1026, 1044, 1062]
-        self.row_h = 1080   
+        self.row_anchor = [18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252, 270, 288, 306, 324, 342,
+                           360, 378, 396, 414, 432, 450, 468, 486, 504, 522, 540, 558, 576, 594, 612, 630, 648, 666,
+                           684, 702, 720, 738, 756, 774, 792, 810, 828, 846, 864, 882, 900, 918, 936, 954, 972, 990,
+                           1008, 1026, 1044, 1062]
+        self.row_h = 1080
         self.grid = 100
 
         if mode_path is None:
             mode_path = '/home/ckp/pidai_bs1.om'
-        self.net = OMNet(mode_path, device_id=0, out_type=np.float32)   
-        self.output = output  
+        self.net = OMNet(mode_path, device_id=0, out_type=np.float32)
+        self.output = output
         return
-    
+
     @staticmethod
     def softmax(x, axis=None):
         # 为了数值稳定性，减去最大值
@@ -213,10 +212,9 @@ class PDModel:
                     continue
 
                 p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1,
-                    int(h * (self.row_anchor[k] / self.row_h)) - 1)
+                     int(h * (self.row_anchor[k] / self.row_h)) - 1)
                 pts.append(p)
         return pts
-
 
     def __call__(self, img_bgr, in_w=640, in_h=384):
         # img_bgr = cv2.imread(file_name, cv2.IMREAD_COLOR)
@@ -234,7 +232,7 @@ class PDModel:
 
         logits = np.array(logits, dtype=np.float32)
         logits = logits.reshape(1, 101, 59, 2)
-        
+
         bs, cls_nums, anchors, nums = logits.shape
 
         # logits = torch.flip(logits, dims=[2])
@@ -258,30 +256,28 @@ class PDModel:
         return img[:, :, ::-1]
 
 
-
 app = FastAPI(title="推理服务")
 pd_model = PDModel(None, None)
 
 
 def base2numpy(base):
-	"""
-	@param base:浏览器可识别的base64编码格式
-	"""
-	img_bin= base64.b64decode(base.split(';base64,')[-1])  
-	img_buff = np.frombuffer(img_bin, dtype='uint8')
-	image = cv2.imdecode(img_buff,1)
-	return image
+    """
+    @param base:浏览器可识别的base64编码格式
+    """
+    img_bin = base64.b64decode(base.split(';base64,')[-1])
+    img_buff = np.frombuffer(img_bin, dtype='uint8')
+    image = cv2.imdecode(img_buff, 1)
+    return image
 
 
 def numpy2base(image):
-	"""
-	@param image:numpy数组格式图片
-	"""
-	success, encoded_image = cv2.imencode(".jpg", image)
-	byte_data = encoded_image.tobytes()
-	base = "data:image/jpg;base64," + base64.b64encode(byte_data).decode('utf-8')
-	return base
-
+    """
+    @param image:numpy数组格式图片
+    """
+    success, encoded_image = cv2.imencode(".jpg", image)
+    byte_data = encoded_image.tobytes()
+    base = "data:image/jpg;base64," + base64.b64encode(byte_data).decode('utf-8')
+    return base
 
 
 @app.post("/infer", summary="返回推理结果")
@@ -289,7 +285,6 @@ async def infer(buffer: str = Body(..., embed=True)):
     arr = base2numpy(buffer)
     arr = pd_model(arr)
     return {'result': numpy2base(arr)}
-
 
 
 if __name__ == '__main__':
