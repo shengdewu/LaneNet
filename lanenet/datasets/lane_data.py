@@ -190,7 +190,7 @@ class LaneClsDataset(Dataset):
             if np.sum(cls_group[:, i] != 0) < 2:
                 continue
             for k in range(anchors):
-                if cls_group[k, i] < 0:
+                if cls_group[k, i] <= 0:
                     continue
 
                 p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1,
