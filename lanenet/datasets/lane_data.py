@@ -175,7 +175,7 @@ class LaneClsDataset(Dataset):
             all_idx_cp[i, pos:, 1] = fitted
         return all_idx_cp
 
-    def to_pts(self, cls_group, img_shape, col_sample_step, in_width=800):
+    def to_lines(self, cls_group, img_shape, col_sample_step, in_width=800):
         """
         :param cls_group:
         :param img_shape: 原始图像
@@ -185,8 +185,9 @@ class LaneClsDataset(Dataset):
         """
         h, w = img_shape
         anchors, nums = cls_group.shape
-        pts = list()
+        lines = list()
         for i in range(nums):
+            line = list()
             if np.sum(cls_group[:, i] != 0) < 2:
                 continue
             for k in range(anchors):
@@ -195,5 +196,6 @@ class LaneClsDataset(Dataset):
 
                 p = (int(cls_group[k, i] * col_sample_step * w / in_width) - 1,
                      int(h * (self.row_anchor[k] / self.row_h)) - 1)
-                pts.append(p)
-        return pts
+                line.append(p)
+            lines.append(line)
+        return lines
