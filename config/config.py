@@ -8,23 +8,24 @@ cls_num_per_lane = len(cfg['row_anchor'])
 griding_num = cfg['griding_num']
 num_lanes = 2
 pool_channel = 16
-cls_channel = 512
+cls_channel = 128
 
 batch_size = 8
 num_workers = 4
 img_size = (384, 640)
-max_iter = 5000
+max_iter = 500
 warmup_iter = 100
 checkpoint_period = 200
 is_poly = True
-steps = [2500, 3500, 4500]  # is multi
+# steps = [2500, 3500, 4500]  # is multi
+steps = [250, 350, 450]  # is multi
 enable_epoch_method = False
 learning_rate = 4e-4
 ignore_index = 255
 
 
-img_root = '/home/thinkbook/workspace/datasets/pidai-2'
-output_dir = '/home/thinkbook/workspace/LaneNet/checkpoint/lanenet-regseg-pidai-poly'
+img_root = '/mnt/sda/datasets/pidai-2'
+output_dir = '/mnt/sda/train.output/lanenet/test'
 
 t_transformer = [
     dict(
@@ -119,22 +120,23 @@ model = dict(
         name='RegSegEncoder',
         stem_channels=32,
         stages=[
-            [[48, [1], 24, 2, 4], [48, [1], 24, 1, 4]],
-            [[120, [1], 24, 2, 4], *[[120, [1], 24, 1, 4]] * 5],
+            # out_channels, dilations, group_width, stride, se_ratio
+            [[48, [1], 16, 2, 4]],
+            [[96, [1], 16, 2, 4], *[[96, [1], 16, 1, 4]] * 2],
             [
-                [336, [1], 24, 2, 4],
-                [336, [1], 24, 1, 4],
-                [336, [1, 2], 24, 1, 4],
-                *[[336, [1, 4], 24, 1, 4]] * 4,
-                *[[336, [1, 14], 24, 1, 4]] * 6,
-                [384, [1, 14], 24, 1, 4],
+                [128, [1], 16, 2, 4],
+                [128, [1], 16, 1, 4],
+                [128, [1, 2], 16, 1, 4],
+                *[[128, [1, 4], 16, 1, 4]] * 4,
+                *[[128, [1, 14], 16, 1, 4]] * 6,
+                [160, [1, 14], 16, 1, 4],
             ],
         ],
         out_indices=(0, 1, 2)
     ),
     decoder=dict(
         name='LaneHead',
-        in_channels=[48, 120, 384],
+        in_channels=[48, 96, 160],
         grid_num=griding_num,
         num_lanes=num_lanes,
         cls_num_per_lane=cls_num_per_lane,
@@ -152,7 +154,7 @@ model = dict(
     ),
     auxiliary=dict(
         name='LaneHeadAux',
-        in_channels=[48, 120, 384],
+        in_channels=[48, 96, 160],
         aux_channel=128,
         num_lanes=num_lanes,
         loss_cfg=dict(
