@@ -47,16 +47,16 @@ def convert_mask(in_path, out_path):
             # cv2.polylines(mask, [pts], isClosed=False, color=label, thickness=4, lineType=cv2.LINE_8)
             cv2.fillPoly(mask, [pts], color=label, lineType=cv2.LINE_8)
 
-        # cv2.imwrite(mask_name, mask)
-        #
-        # img = cv2.imread(f'{in_path}/{arr[0]}.jpg', cv2.IMREAD_COLOR)
-        # weight = np.zeros_like(img)
-        # weight[:, :, 0] = mask * 100
-        # overlapping = cv2.addWeighted(img, 0.65, weight, 0.35, 0)
-        # weight[:, :, 1] = weight[:, :, 0]
-        # weight[:, :, 2] = weight[:, :, 0]
-        # overlapping = np.where(weight > 0, overlapping, img)
-        # cv2.imwrite(f'{out_path}/{arr[0]}_weight.jpg', overlapping)
+        cv2.imwrite(mask_name, mask)
+
+        img = cv2.imread(f'{in_path}/{arr[0]}.jpg', cv2.IMREAD_COLOR)
+        weight = np.zeros_like(img)
+        weight[:, :, 0] = mask * 100
+        overlapping = cv2.addWeighted(img, 0.65, weight, 0.35, 0)
+        weight[:, :, 1] = weight[:, :, 0]
+        weight[:, :, 2] = weight[:, :, 0]
+        overlapping = np.where(weight > 0, overlapping, img)
+        cv2.imwrite(f'{out_path}/{arr[0]}_weight.jpg', overlapping)
 
     return
 
