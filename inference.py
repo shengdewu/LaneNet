@@ -170,6 +170,63 @@ class PDEngine(Engine):
         return lines
 
 
+class PDSegEngine(Engine):
+    def __init__(self, onnx_path='./RegSegEncoder-LaneHead_final.onnx', wh=(640, 384)):
+        """
+        初始化推理接口
+
+        Args:
+            onnx_path: 模型onnx文件路径
+            wh: 模型的输入大小 (w, h)
+        """
+        super(PDSegEngine, self).__init__(onnx_path, wh)
+        self.wh = wh
+        return
+
+    @staticmethod
+    def softmax(x, axis=None):
+        """
+        计算输入数组沿指定轴的 Softmax 值
+
+        参数:
+        x (np.ndarray): 输入数组
+        axis (int, 可选): 计算 Softmax 的轴，默认为 None（处理为一维数组）
+
+        返回:
+        np.ndarray: Softmax 结果，形状与输入相同
+        """
+        # 为了数值稳定性，减去最大值
+        x_max = np.max(x, axis=axis, keepdims=True)
+        x = x - x_max
+
+        # 计算指数
+        exp_x = np.exp(x)
+
+        # 计算分母
+        sum_exp = np.sum(exp_x, axis=axis, keepdims=True)
+
+        # 返回结果
+        return exp_x / sum_exp
+
+    def postprocess(self, out: np.ndarray, img_shape: Tuple[int], in_shape: Tuple[int]) -> Any:
+        out = np.argmax(out, axis=1)[0]
+
+        lines = list()
+        for i in np.unique(out).tolist():
+            if i == 0:
+                continue
+
+            coords = np.column_stack(np.where(out == i))
+
+            lines.append([(int(coord[1]), int(coord[0])) for coord in coords])
+
+        h, w = in_shape
+        oh, ow = img_shape
+        ws = float(ow) / w
+        hs = float(oh) / h
+        return [[(int(x * ws), int(y * hs)) for x, y in line] for line in lines]
+
+
 class GOOffTrack:
     def __init__(self, threshold=10):
         self.threshold = threshold
@@ -238,8 +295,8 @@ class GOOffTrack:
 
 
 if __name__ == '__main__':
-    model_onnx = PDEngine('./RegSegEncoder-LaneHead_final-128.onnx')  # load onnx model
-    img_bgr = cv2.imread('91.jpg', cv2.IMREAD_COLOR)
+    model_onnx = PDSegEngine('./lanenet_4c_seg.onnx')  # load onnx model
+    img_bgr = cv2.imread('lane-4c.jpg', cv2.IMREAD_COLOR)
 
     start = time.time()
     lines = model_onnx(img_bgr)

@@ -6,6 +6,25 @@ import shutil
 import cv2
 import numpy as np
 
+COLORS = [
+    [0, 0, 139],
+    [34, 139, 34],
+    [230, 216, 173],
+    [0, 255, 255],
+    [250, 230, 230],
+    [128, 0, 0]
+]
+
+
+def polyfit(line: list):
+    x = [x for x, y in line]
+    y = [y for x, y in line]
+    if sum(abs(b - a) for a, b in zip(x[:-1], x[1:])) < 1e-3:
+        return None, None
+
+    slope, intercept = np.polyfit(np.array(x), np.array(y), deg=1)
+    return slope, intercept
+
 
 def create_mask(in_path, out_path):
     """
@@ -20,11 +39,18 @@ def create_mask(in_path, out_path):
         with open(f'{in_path}/{name}', mode='r') as f:
             anns = json.load(f)
 
-        shapes = dict()
+        tmp = dict()
         for shape in anns['shapes']:
             label = int(shape['label'])
-            shapes[label] = sorted(shape['points'], key=lambda xy: xy[1], reverse=False)
+            if tmp.get(label, None) is None:
+                tmp[label] = list()
+            tmp[label].extend(shape['points'])
 
+        shapes = dict()
+        for k, pts in tmp.items():
+            shapes[k] = sorted(pts, key=lambda xy: xy[1], reverse=False)
+
+        del tmp
         arr = name.split('.')
         mask_name = f'{out_path}/{arr[0]}.png'
 
@@ -50,15 +76,22 @@ def create_mask(in_path, out_path):
 
             nb_points = shapes.get(nb_label, None)
             if nb_points is not None:
+                nb_k, nb_b = polyfit(nb_points)
+
                 front_x = points[-1][0]
                 back_x = points[0][0]
-                nb_front_x = shapes[nb_label][-1][0]
-                nb_back_x = shapes[nb_label][0][0]
+
+                if nb_k is None:
+                    nb_front_x = shapes[nb_label][-1][0]
+                    nb_back_x = shapes[nb_label][0][0]
+                else:
+                    nb_front_x = (points[-1][1] - nb_b) / nb_k
+                    nb_back_x = (points[0][1] - nb_b) / nb_k
 
                 back_offset = abs(back_x - nb_back_x)
                 front_offset = abs(front_x - nb_front_x)
 
-                if back_offset <= abs(offset * 5):
+                if back_offset <= abs(offset * 5) or front_offset > back_offset * 5:
                     back_y = back_offset / front_offset
                     front_y = 1
 
@@ -93,13 +126,15 @@ def create_mask(in_path, out_path):
         cv2.imwrite(mask_name, mask)
 
         img = cv2.imread(f'{in_path}/{arr[0]}.jpg', cv2.IMREAD_COLOR)
-        weight = np.zeros_like(img)
-        weight[:, :, 0] = mask * 100
-        overlapping = cv2.addWeighted(img, 0.65, weight, 0.35, 0)
-        weight[:, :, 1] = weight[:, :, 0]
-        weight[:, :, 2] = weight[:, :, 0]
-        overlapping = np.where(weight > 0, overlapping, img)
-        cv2.imwrite(f'{out_path}/{arr[0]}_weight.jpg', overlapping)
+        for label in np.unique(mask):
+            if label == 0:
+                continue
+            b, g, r = COLORS[label]
+            img[:, :, 0] = np.where(mask == label, b, img[:, :, 0])
+            img[:, :, 1] = np.where(mask == label, g, img[:, :, 1])
+            img[:, :, 2] = np.where(mask == label, r, img[:, :, 2])
+
+        cv2.imwrite(f'{out_path}/{arr[0]}_weight.jpg', img)
 
     return
 
@@ -129,25 +164,25 @@ def create_anchor(in_path, cls_lane=56):
 
 
 if __name__ == '__main__':
-    in_root = '/mnt/sda/datasets/皮带跑偏数据集合/part1'
-    out_root = '/mnt/sda/datasets/皮带跑偏数据集合/part1-0'
+    in_root = '/mnt/sda/datasets/皮带跑偏数据集合/part3'
+    out_root = '/mnt/sda/datasets/皮带跑偏数据集合/part3'
     create_mask(in_root, out_root)
 
     # create_anchor(in_root, 60)
 
-    # in_root = '/mnt/sda/datasets/皮带跑偏数据集合'
-    # names = list()
-    # for pname in ['part0', 'part1']:
-    #     names.extend([f'{pname}/{name}' for name in os.listdir(f'{in_root}/{pname}') if name.endswith('png')])
-    #
-    # random.shuffle(names)
-    # idx = int(len(names) * 0.9)
-    # with open(f'{in_root}/train_part1.txt', mode='w') as f:
-    #     for name in names[: idx]:
-    #         arr = name.split('.')
-    #         f.write(f'{arr[0]}.jpg {arr[0]}.png\n')
-    #
-    # with open(f'{in_root}/test_part1.txt', mode='w') as f:
-    #     for name in names[idx:]:
-    #         arr = name.split('.')
-    #         f.write(f'{arr[0]}.jpg {arr[0]}.png\n')
+    in_root = '/mnt/sda/datasets/皮带跑偏数据集合'
+    names = list()
+    for pname in ['part0', 'part2', 'part3']:
+        names.extend([f'{pname}/{name}' for name in os.listdir(f'{in_root}/{pname}') if name.endswith('png')])
+
+    random.shuffle(names)
+    idx = int(len(names) * 0.9)
+    with open(f'{in_root}/train_part023.txt', mode='w') as f:
+        for name in names[: idx]:
+            arr = name.split('.')
+            f.write(f'{arr[0]}.jpg {arr[0]}.png\n')
+
+    with open(f'{in_root}/test_part023.txt', mode='w') as f:
+        for name in names[idx:]:
+            arr = name.split('.')
+            f.write(f'{arr[0]}.jpg {arr[0]}.png\n')

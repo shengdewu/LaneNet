@@ -24,7 +24,7 @@ ignore_index = 255
 
 
 img_root = '/mnt/sda/datasets/皮带跑偏数据集合'
-output_dir = '/mnt/sda/train.output/lanenet/lanenet-4lane-d023'
+output_dir = '/mnt/sda/train.output/lanenet/lanenet-4lane-aux-d023'
 
 t_transformer = [
     dict(
@@ -101,6 +101,7 @@ dataloader = dict(
         num_lanes=num_lanes,
         file_names='train_part023.txt',
         transformers=t_transformer,
+        aux_is_seg=False
     ),
     val_data_set=dict(
         name='LaneClsDataset',
@@ -109,6 +110,7 @@ dataloader = dict(
         num_lanes=num_lanes,
         file_names=['test_part023.txt'],
         transformers=v_transformer,
+        aux_is_seg=False
     )
 )
 
@@ -133,7 +135,7 @@ model = dict(
         ],
         out_indices=(0, 1, 2)
     ),
-    decoder=dict(
+    auxiliary=dict(
         name='LaneHead',
         in_channels=[48, 96, 160],
         grid_num=griding_num,
@@ -151,7 +153,7 @@ model = dict(
             ]
         )
     ),
-    auxiliary=dict(
+    decoder=dict(
         name='LaneHeadAux',
         in_channels=[48, 96, 160],
         aux_channel=128,
@@ -159,7 +161,9 @@ model = dict(
         loss_cfg=dict(
             loss=[
                 dict(name='GeneralizedCELoss',
-                     param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index))
+                     param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index)),
+                dict(name='SSIMLoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
+                dict(name='IOULoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
             ])
     )
 )
