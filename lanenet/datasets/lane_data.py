@@ -93,8 +93,8 @@ class LaneClsDataset(Dataset):
             data['label'] = torch.from_numpy(cls_label).long()
             data['aux_label'] = F.to_tensor(label).long()
         else:
-            data['label'] = torch.from_numpy(cls_label).long()
-            data['aux_label'] = F.to_tensor(label).long()
+            data['aux_label'] = torch.from_numpy(cls_label).long()
+            data['label'] = F.to_tensor(label).long()
 
         data['img'] = F.to_tensor(result['img'])
         data['col_sample_step'] = step
