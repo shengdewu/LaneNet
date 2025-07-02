@@ -22,6 +22,7 @@ class LaneClsDataset(Dataset):
                  lane_config,
                  transformers: List = None,
                  num_lanes=4,
+                 aux_is_seg=True
                  ):
         super(LaneClsDataset, self).__init__()
 
@@ -34,6 +35,7 @@ class LaneClsDataset(Dataset):
         self.transforms = TransformCompose(transformers)
         self.path = path
         self.num_lanes = num_lanes
+        self.aux_is_seg = aux_is_seg
 
         if isinstance(file_names, str):
             file_names = [file_names]
@@ -87,9 +89,14 @@ class LaneClsDataset(Dataset):
 
         # make the coordinates to classification label
         data = dict()
-        data['label'] = torch.from_numpy(cls_label).long()
+        if self.aux_is_seg:
+            data['label'] = torch.from_numpy(cls_label).long()
+            data['aux_label'] = F.to_tensor(label).long()
+        else:
+            data['label'] = torch.from_numpy(cls_label).long()
+            data['aux_label'] = F.to_tensor(label).long()
+
         data['img'] = F.to_tensor(result['img'])
-        data['aux_label'] = F.to_tensor(label).long()
         data['col_sample_step'] = step
         data['grid_num'] = self.griding_num
 
