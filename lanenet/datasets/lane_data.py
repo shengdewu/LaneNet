@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 import torch
 import cv2
 import numpy as np
@@ -18,7 +18,7 @@ __all__ = [
 class LaneClsDataset(Dataset):
 
     def __init__(self, path,
-                 file_name,
+                 file_names: Union[str, List],
                  lane_config,
                  transformers: List = None,
                  num_lanes=4,
@@ -35,17 +35,23 @@ class LaneClsDataset(Dataset):
         self.path = path
         self.num_lanes = num_lanes
 
-        with open(f'{path}/{file_name}', 'r') as f:
-            file_list = f.readlines()
+        if isinstance(file_names, str):
+            file_names = [file_names]
+
         self.file_list = list()
-        for item in file_list:
-            l_info = item.split()
-            img_name, label_name = l_info[0], l_info[1]
-            if os.path.exists(f'{self.path}/{img_name}') and os.path.exists(f'{self.path}/{label_name}'):
-                self.file_list.append((img_name, label_name))
+
+        for file_name in file_names:
+            with open(f'{path}/{file_name}', 'r') as f:
+                file_list = f.readlines()
+
+            for item in file_list:
+                l_info = item.split()
+                img_name, label_name = l_info[0], l_info[1]
+                if os.path.exists(f'{self.path}/{img_name}') and os.path.exists(f'{self.path}/{label_name}'):
+                    self.file_list.append((img_name, label_name))
 
         if len(self.file_list) == 0:
-            raise FileNotFoundError(f'{path}/{file_name}')
+            raise FileNotFoundError(f'{path}/{file_names}')
         return
 
     def __getitem__(self, index):
