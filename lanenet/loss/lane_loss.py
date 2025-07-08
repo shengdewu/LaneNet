@@ -64,7 +64,8 @@ class StraightLoss(nn.Module):
         pos = torch.sum(x * embedding, dim=1)
 
         diff_list1 = []
-        for i in range(0, num_rows // 2):
+        # for i in range(0, num_rows // 2): # 原始论文只关注了前半部分
+        for i in range(0, num_rows - 1):
             diff_list1.append(pos[:, i, :] - pos[:, i + 1, :])
 
         loss = 0
