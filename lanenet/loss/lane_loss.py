@@ -50,11 +50,12 @@ class SimilarityLoss(nn.Module):
 
 @LOSS_ARCH_REGISTRY.register()
 class StraightLoss(nn.Module):
-    def __init__(self, lambda_weight=1.0):
+    def __init__(self, lambda_weight=1.0, use_all_pts=False):
         super(StraightLoss, self).__init__()
         self.l1 = torch.nn.L1Loss()
         # self.l1 = torch.nn.MSELoss()
         self.lambda_weight = lambda_weight
+        self.use_all_pts = use_all_pts
         return
 
     def forward(self, logits):
@@ -64,8 +65,10 @@ class StraightLoss(nn.Module):
         pos = torch.sum(x * embedding, dim=1)
 
         diff_list1 = []
-        # for i in range(0, num_rows // 2): # 原始论文只关注了前半部分
-        for i in range(0, num_rows - 1):
+        end_loc = num_rows // 2  # 原始论文只关注了前半部分
+        if self.use_all_pts:
+            end_loc = num_rows - 1
+        for i in range(0, end_loc):
             diff_list1.append(pos[:, i, :] - pos[:, i + 1, :])
 
         loss = 0
