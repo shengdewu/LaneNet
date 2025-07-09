@@ -13,7 +13,7 @@ cls_channel = 128
 batch_size = 8
 num_workers = 4
 img_size = (384, 640)
-max_iter = 8000
+max_iter = 12000
 warmup_iter = 100
 checkpoint_period = 500
 is_poly = True
@@ -21,17 +21,18 @@ steps = [2000, 4000, 6000, 7500]  # is multi
 enable_epoch_method = False
 learning_rate = 4e-4
 ignore_index = 255
+use_all_pts = False
 
 
 img_root = '/mnt/sda/datasets/皮带跑偏数据集合'
-output_dir = '/mnt/sda/train.output/lanenet/lanenet-4lane-d023'
+output_dir = f'/mnt/sda/train.output/lanenet/lanenet-4lane-d023-12000-dice-use-{use_all_pts}'
 
 t_transformer = [
-    dict(
-        name='RandomFlip',
-        direction=['vertical'],
-        p=0.4,
-    ),
+    # dict(
+    #     name='RandomFlip',
+    #     direction=['vertical'],
+    #     p=0.4,
+    # ),
     dict(
         name='RandomAffine',
         rotate_degree_range=[degree for degree in range(-6, 6, 1)],
@@ -99,7 +100,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names='train_part023.txt',
+        file_names=['train_part0.txt', 'train_part1.txt', 'train_part2.txt', 'train_part3.txt', 'train_part4.txt'],
         transformers=t_transformer,
     ),
     val_data_set=dict(
@@ -107,7 +108,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names=['test_part023.txt'],
+        file_names=['test_part0.txt', 'test_part1.txt', 'test_part2.txt', 'test_part3.txt', 'test_part4.txt'],
         transformers=v_transformer,
     )
 )
@@ -147,7 +148,7 @@ model = dict(
                 dict(name='SoftmaxFocalLoss',
                      param=dict(gamma=2.0, lambda_weight=10.0, ignore_index=ignore_index)),
                 dict(name='SimilarityLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
-                dict(name='StraightLoss', param=dict(lambda_weight=2.0), input_name=['logits']),
+                dict(name='StraightLoss', param=dict(lambda_weight=2.0, use_all_pts=use_all_pts), input_name=['logits']),
             ]
         )
     ),
@@ -159,7 +160,11 @@ model = dict(
         loss_cfg=dict(
             loss=[
                 dict(name='GeneralizedCELoss',
-                     param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index))
+                     param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index)),
+                dict(name='GeneralizedDiceLoss',
+                     param=dict(lambda_weight=1.0, apply_softmax=False, ignore_index=ignore_index)),
+                # dict(name='SSIMLoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
+                # dict(name='IOULoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
             ])
     )
 )
