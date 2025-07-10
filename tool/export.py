@@ -83,6 +83,7 @@ def main(config: str,
          simplify=False,  # ONNX: simplify model
          opset=12,  # ONNX: opset version
          include=('torchscript', 'onnx'),  # include formats
+         use_aux=False,
          ):
     include = [x.lower() for x in include]  # to lowercase
     fmts = tuple(export_formats()['Argument'])  # --include arguments
@@ -93,7 +94,7 @@ def main(config: str,
     from tool.create_model import create_encoder_decoder
     from tool.performance import test_performance
 
-    model = create_encoder_decoder(config, weight, device)
+    model = create_encoder_decoder(config, weight, device, use_aux)
     test_performance(model, (height, width))
 
     # Exports
@@ -122,6 +123,7 @@ def parse_opt():
     parser.add_argument('--optimize', action='store_true', help='TorchScript: optimize for mobile')
     parser.add_argument('--simplify', action='store_true', help='ONNX: simplify model')
     parser.add_argument('--opset', type=int, default=12, help='ONNX: opset version')
+    parser.add_argument('--use-aux', action='store_true', help='enable auxiliary')
     parser.add_argument(
         '--include',
         nargs='+',

@@ -34,13 +34,13 @@ def load_config(file_name):
     return cfg_dict
 
 
-def create_encoder_decoder(cfg_path: str, checkpoint: str = '', device: str = '') -> EncoderDecoder:
+def create_encoder_decoder(cfg_path: str, checkpoint: str = '', device: str = '', use_aux=False) -> EncoderDecoder:
     config = load_config(cfg_path)
     model = build_network(config['model'])
     if checkpoint != '':
         state_dict = torch.load(checkpoint)
         model.load_state_dict(state_dict['model']['g_model'])
     model = model.to(device)
-    model.prepare_deploy()
+    model.prepare_deploy(use_aux)
     model.eval()
     return model
