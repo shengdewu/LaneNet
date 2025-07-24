@@ -1,0 +1,22 @@
+services:
+  sdwseg:
+    image: lanenet:2.0
+    container_name: lanenet
+    command: --config-file /home/thinkbook/workspace/LaneNet/config/config.py
+    restart: no
+    runtime: nvidia
+    privileged: true
+    volumes:
+      - /home/thinkbook:/home/thinkbook
+      - /mnt/sda:/mnt/sda
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: 1
+    shm_size: '8g'
+    cpuset: "14,15,16,17"
