@@ -2,11 +2,11 @@ import torch
 from torch import Tensor
 
 
-def multi_label_acc(predict: Tensor, target: Tensor):
+def multi_label_acc(predict: Tensor, target: Tensor, bg=0):
     predict = predict.flatten()
     target = target.flatten()
-    cnt = predict.shape[0]
-    return torch.sum(predict == target) / cnt
+    idx = target != bg
+    return (torch.sum(predict[idx] == target[idx]) / idx.sum()).item()
 
 
 def acc_topk(predict: Tensor, target: Tensor, bg, k=2):

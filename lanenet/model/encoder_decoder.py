@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 import torch
 from typing import Dict, Optional, Union, List, Tuple
-from .utils import acc_topk
+from .utils import acc_topk, multi_label_acc
 
 __all__ = [
     'EncoderDecoder'
@@ -79,7 +79,12 @@ class EncoderDecoder(nn.Module):
         """
         车道线的坐标，在x轴上被分成101类（0-100），100 是背景
         """
-        result['acc'] = acc_topk(torch.argmax(logits, dim=1), label['label'], logits.shape[1]-1)
+        if img.shape[2:] != logits.shape[2:]:
+            # 如果logits是点检测
+            result['acc'] = acc_topk(torch.argmax(logits, dim=1), label['label'], logits.shape[1]-1)
+        else:
+            # 如果logits是分割
+            result['acc'] = multi_label_acc(torch.argmax(logits, dim=1), label['label'], 0)
 
         if self.with_auxiliary:
             if isinstance(self.auxiliary, nn.ModuleList):
@@ -88,7 +93,12 @@ class EncoderDecoder(nn.Module):
                 logits = self.auxiliary(x, img.shape[2:])
 
             result['aux_logits'] = logits
-            result['aux_acc'] = acc_topk(torch.argmax(logits, dim=1), label['aux_label'], 0).item()
+            if img.shape[2:] != logits.shape[2:]:
+                # 如果logits是点检测
+                result['aux_acc'] = acc_topk(torch.argmax(logits, dim=1), label['aux_label'], logits.shape[1]-1).item()
+            else:
+                # 如果logits是分割
+                result['aux_acc'] = multi_label_acc(torch.argmax(logits, dim=1), label['aux_label'], 0)
 
         return result
 
