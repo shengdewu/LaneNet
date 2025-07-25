@@ -24,7 +24,8 @@ ignore_index = 255
 use_all_pts = True
 
 img_root = '/mnt/sda/datasets/皮带跑偏数据集合'
-output_dir = f'/mnt/sda/train.output/lanenet/lanenet-4lane-aux-d023-12000-dice-use-{use_all_pts}'
+output_dir = f'/mnt/sda/train.output/lanenet/lanenet-4lane-aux-d023-12000-use-{use_all_pts}'
+weights = ''
 
 t_transformer = [
     # dict(
@@ -99,7 +100,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names=['train_part0.txt', 'train_part1.txt', 'train_part2.txt', 'train_part3.txt', 'train_part4.txt'],
+        file_names=['train_part0.txt', 'train_part1.txt', 'train_part2.txt', 'train_part3.txt', 'train_part4.txt', 'train_part5.txt'],
         transformers=t_transformer,
         aux_is_seg=False
     ),
@@ -108,7 +109,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names=['test_part0.txt', 'test_part1.txt', 'test_part2.txt', 'test_part3.txt', 'test_part4.txt'],
+        file_names=['test_part0.txt', 'test_part1.txt', 'test_part2.txt', 'test_part3.txt', 'test_part4.txt', 'test_part5.txt'],
         transformers=v_transformer,
         aux_is_seg=False
     )
@@ -162,8 +163,8 @@ model = dict(
             loss=[
                 dict(name='GeneralizedCELoss',
                      param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index)),
-                dict(name='GeneralizedDiceLoss',
-                     param=dict(lambda_weight=1.0, apply_softmax=False, ignore_index=ignore_index)),
+                # dict(name='GeneralizedDiceLoss',
+                #      param=dict(lambda_weight=1.0, apply_softmax=False, ignore_index=ignore_index)),
                 # dict(name='SSIMLoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
                 # dict(name='IOULoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
             ])
@@ -172,7 +173,7 @@ model = dict(
 
 trainer = dict(
     name='LaneTrainer',
-    weights='',
+    weights=weights,
     device='cuda',
     enable_epoch_method=enable_epoch_method,
     model=dict(
