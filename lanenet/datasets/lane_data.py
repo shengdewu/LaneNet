@@ -22,7 +22,8 @@ class LaneClsDataset(Dataset):
                  lane_config,
                  transformers: List = None,
                  num_lanes=4,
-                 aux_is_seg=True
+                 aux_is_seg=True,
+                 extend_line=False
                  ):
         super(LaneClsDataset, self).__init__()
 
@@ -36,6 +37,7 @@ class LaneClsDataset(Dataset):
         self.path = path
         self.num_lanes = num_lanes
         self.aux_is_seg = aux_is_seg
+        self.extend_line = extend_line
 
         if isinstance(file_names, str):
             file_names = [file_names]
@@ -156,37 +158,37 @@ class LaneClsDataset(Dataset):
                     all_idx[lane_idx - 1, i, 0] = r
                     all_idx[lane_idx - 1, i, 1] = pos
 
-        # data augmentation: extend the lane to the boundary of image
-        all_idx_cp = all_idx.copy()
-        for i in range(self.num_lanes):
-            if np.all(all_idx_cp[i, :, 1] == -1):
-                continue
-            # if there is no lane
+        if self.extend_line:
+            # data augmentation: extend the lane to the boundary of image
+            for i in range(self.num_lanes):
+                if np.all(all_idx[i, :, 1] == -1):
+                    continue
+                # if there is no lane
 
-            valid = all_idx_cp[i, :, 1] != -1
-            # get all valid lane points' index
-            valid_idx = all_idx_cp[i, valid, :]
-            # get all valid lane points
-            if valid_idx[-1, 0] == all_idx_cp[i, -1, 0]:
-                # if the last valid lane point's y-coordinate is already the last y-coordinate of all rows
-                # this means this lane has reached the bottom boundary of the image
-                # so we skip
-                continue
-            if len(valid_idx) < 6:
-                continue
-            # if the lane is too short to extend
+                valid = all_idx[i, :, 1] != -1
+                # get all valid lane points' index
+                valid_idx = all_idx[i, valid, :]
+                # get all valid lane points
+                if valid_idx[-1, 0] == all_idx[i, -1, 0]:
+                    # if the last valid lane point's y-coordinate is already the last y-coordinate of all rows
+                    # this means this lane has reached the bottom boundary of the image
+                    # so we skip
+                    continue
+                if len(valid_idx) < 6:
+                    continue
+                # if the lane is too short to extend
 
-            valid_idx_half = valid_idx[len(valid_idx) // 2:, :]
-            p = np.polyfit(valid_idx_half[:, 0], valid_idx_half[:, 1], deg=1)
-            start_line = valid_idx_half[-1, 0]
-            pos = self.find_start_pos(all_idx_cp[i, :, 0], start_line) + 1
+                valid_idx_half = valid_idx[len(valid_idx) // 2:, :]
+                p = np.polyfit(valid_idx_half[:, 0], valid_idx_half[:, 1], deg=1)
+                start_line = valid_idx_half[-1, 0]
+                pos = self.find_start_pos(all_idx[i, :, 0], start_line) + 1
 
-            fitted = np.polyval(p, all_idx_cp[i, pos:, 0])
-            fitted = np.array([-1 if y < 0 or y > w - 1 else y for y in fitted])
+                fitted = np.polyval(p, all_idx[i, pos:, 0])
+                fitted = np.array([-1 if y < 0 or y > w - 1 else y for y in fitted])
 
-            assert np.all(all_idx_cp[i, pos:, 1] == -1)
-            all_idx_cp[i, pos:, 1] = fitted
-        return all_idx_cp
+                assert np.all(all_idx[i, pos:, 1] == -1)
+                all_idx[i, pos:, 1] = fitted
+        return all_idx
 
     def to_lines(self, cls_group, img_shape, col_sample_step, in_width=800):
         """
