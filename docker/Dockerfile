@@ -1,4 +1,4 @@
-FROM dl.nvidia/cuda:11.1-cudnn8-devel-torch1.10.0
+FROM dl.nvidia/cuda:12.8-cudnn9-runtime-torch2.7.1
 
 COPY lanenet /home/lanenet/lanenet
 COPY util /home/lanenet/util

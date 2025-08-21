@@ -49,7 +49,7 @@ class LaneClsDataset(Dataset):
                 file_list = f.readlines()
 
             for item in file_list:
-                l_info = item.split()
+                l_info = item.strip().split(',')
                 img_name, label_name = l_info[0], l_info[1]
                 if os.path.exists(f'{self.path}/{img_name}') and os.path.exists(f'{self.path}/{label_name}'):
                     self.file_list.append((img_name, label_name))
