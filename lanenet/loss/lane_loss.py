@@ -11,7 +11,8 @@ from ..model.utils import differentiable_argmax
 __all__ = [
     'SoftmaxFocalLoss',
     'SimilarityLoss',
-    'StraightLoss'
+    'StraightLoss',
+    'SegStraightLoss'
 ]
 
 
