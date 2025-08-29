@@ -214,3 +214,25 @@ class LaneClsDataset(Dataset):
                 line.append(p)
             lines.append(line)
         return lines
+
+    def seg_to_lines(self, logit: np.ndarray, img_shape, nc):
+        """
+        分割结果转点位
+        :param logit: h, w 经过了argmax dtype=int64
+        :param img_shape: 原始图像h, w
+        :param nc: 类别总数
+        :return:
+        """
+        h, w = logit.shape
+
+        ws = float(img_shape[1]) / w
+        hs = float(img_shape[0]) / h
+
+        lines = list()
+        for i in range(1, nc):
+            coord = np.column_stack(np.where(logit == i))
+            if coord.shape[0] == 0:
+                lines.append([])
+                continue
+            lines.append([(int(cd[1] * ws), int(cd[0] * hs)) for cd in coord])
+        return lines

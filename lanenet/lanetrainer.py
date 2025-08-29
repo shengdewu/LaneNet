@@ -16,7 +16,23 @@ class LaneTrainer(BaseTrainer):
         return
 
     def draw_seg(self, seg_logits, seg_label, img, i):
+        bs, nc = seg_logits.shape[:2]
+
         seg_logits = torch.argmax(seg_logits, dim=1)
+
+        imgs = list()
+        for b in range(bs):
+            im = img[b].cpu().permute(1, 2, 0).numpy().astype(np.uint8)
+            im = np.ascontiguousarray(im)
+
+            lines = self.test_data_loader.dataset.seg_to_lines(seg_logits[b].numpy(), img.shape[2:], nc)
+            for line in lines:
+                for pt in line:
+                    cv2.circle(im, pt, 5, (0, 255, 0), -1)
+
+            imgs.append(im[:, :, ::-1])
+
+        cv2.imwrite(f'{self.output}/{i}-seg-pts.jpg', np.concatenate(imgs, axis=1))
 
         seg_label = seg_label[:, 0, ...]
         fake_seg = torch.zeros_like(img)

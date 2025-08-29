@@ -6,6 +6,8 @@ import numpy as np
 
 from engine.loss import LOSS_ARCH_REGISTRY
 
+from ..model.utils import differentiable_argmax
+
 __all__ = [
     'SoftmaxFocalLoss',
     'SimilarityLoss',
@@ -75,4 +77,30 @@ class StraightLoss(nn.Module):
         for i in range(len(diff_list1) - 1):
             loss += self.l1(diff_list1[i], diff_list1[i + 1])
         loss /= len(diff_list1) - 1
+        return loss * self.lambda_weight
+
+
+@LOSS_ARCH_REGISTRY.register()
+class SegStraightLoss(nn.Module):
+    def __init__(self, lambda_weight=1.0):
+        super(SegStraightLoss, self).__init__()
+        self.l1 = torch.nn.L1Loss(reduction='mean')
+        # self.l1 = torch.nn.MSELoss()
+        self.lambda_weight = lambda_weight
+        return
+
+    def forward(self, logits, labels):
+        bs, nc, h, w = logits.shape
+        seg_logits = differentiable_argmax(logits, dim=1).to(torch.int64)
+
+        loss = 0
+        for b in range(bs):
+            for c in range(1, nc):
+                coord = torch.column_stack(torch.where(seg_logits[b] == c))
+                if coord.shape[0] == 0:
+                    continue
+                coord = coord.to(torch.float)
+                diff = coord[:, 1:] - coord[:, :-1]
+                loss += self.l1(diff[1:], diff[:-1]) / (diff.shape[0] + 1)
+
         return loss * self.lambda_weight
