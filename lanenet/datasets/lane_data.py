@@ -13,6 +13,7 @@ __all__ = [
     'LaneClsDataset'
 ]
 
+cv2.setNumThreads(0)
 
 @BUILD_DATASET_REGISTRY.register()
 class LaneClsDataset(Dataset):
