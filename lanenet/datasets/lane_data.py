@@ -109,6 +109,9 @@ class LaneClsDataset(Dataset):
     def __len__(self):
         return len(self.file_list)
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}[{len(self.file_list)}]'
+
     @staticmethod
     def _grid_pts(pts, num_cols, w):
         # pts : numlane,n,2
