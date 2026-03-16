@@ -1,6 +1,6 @@
 import json
 
-lane_config = '/home/thinkbook/workspace/LaneNet/config/base/dataset/pidai.json'
+lane_config = '/home/thinkbook/workspace/LaneNet/config/base/dataset/lane.json'
 with open(lane_config, mode='r') as f:
     cfg = json.load(f)
 
@@ -25,8 +25,8 @@ use_all_pts = True
 
 #  ******* 对于平行与y轴的边缘,使用点的方法不行,分割可以 ******
 
-img_root = '/mnt/sda/datasets/皮带跑偏数据集合'
-output_dir = f'/mnt/sda/train.output/lanenet/lanenet-4lane-d023-12000-use-{use_all_pts}-use6'
+img_root = 'datasets'
+output_dir = 'output'
 weights = ''
 
 t_transformer = [
@@ -102,7 +102,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names=['train_part0.txt', 'train_part1.txt', 'train_part2.txt', 'train_part3.txt', 'train_part4.txt', 'train_part5.txt'],
+        file_names=['train_part0.txt'],
         transformers=t_transformer,
     ),
     val_data_set=dict(
@@ -110,7 +110,7 @@ dataloader = dict(
         path=img_root,
         lane_config=lane_config,
         num_lanes=num_lanes,
-        file_names=['test_part0.txt', 'test_part1.txt', 'test_part2.txt', 'test_part3.txt', 'test_part4.txt', 'test_part5.txt'],
+        file_names=['test_part0.txt'],
         transformers=v_transformer,
     )
 )
@@ -162,11 +162,13 @@ model = dict(
         loss_cfg=dict(
             loss=[
                 dict(name='GeneralizedCELoss',
-                     param=dict(lambda_weight=1.0, apply_sigmoid=False, ignore_index=ignore_index)),
+                     param=dict(lambda_weight=1.0, apply_sigmoid=num_lanes <= 2, ignore_index=ignore_index)),
                 # dict(name='GeneralizedDiceLoss',
-                #      param=dict(lambda_weight=1.0, apply_softmax=False, ignore_index=ignore_index)),
-                # dict(name='SSIMLoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
-                # dict(name='IOULoss', param=dict(lambda_weight=1.0, apply_sigmoid=True, ignore_index=ignore_index)),
+                #      param=dict(lambda_weight=1.0, apply_softmax=num_lanes > 2, ignore_index=ignore_index)),
+                # dict(name='SSIMLoss',
+                #      param=dict(lambda_weight=1.0, apply_sigmoid=num_lanes <= 2, ignore_index=ignore_index)),
+                # dict(name='IOULoss',
+                #      param=dict(lambda_weight=1.0, apply_sigmoid=num_lanes <= 2, ignore_index=ignore_index)),
             ])
     )
 )
