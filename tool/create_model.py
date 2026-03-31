@@ -38,7 +38,7 @@ def create_encoder_decoder(cfg_path: str, checkpoint: str = '', device: str = ''
     config = load_config(cfg_path)
     model = build_network(config['model'])
     if checkpoint != '':
-        state_dict = torch.load(checkpoint)
+        state_dict = torch.load(checkpoint, map_location='cpu')
         model.load_state_dict(state_dict['model']['g_model'])
     model = model.to(device)
     model.prepare_deploy(use_aux)

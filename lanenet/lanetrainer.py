@@ -95,29 +95,14 @@ class LaneTrainer(BaseTrainer):
             result = self.model(batch)
             label = batch['label'].detach().cpu()
 
-            has_aux = result.get('aux_logits', None) is not None
-
             img = batch['img'].mul(255).add_(0.5).clamp_(0, 255)
             col_sample_step = batch['col_sample_step']
             grid_num = batch['grid_num']
             logits = result['logits'].detach().cpu()
             acc.append(result['acc'])
+            aux_acc.append(result.get('aux_acc', 0))
 
-            is_seg = logits.shape[2:] == img.shape[2:]
-            if is_seg:
-                self.draw_seg(logits, label, img, i)
-                if has_aux:
-                    aux_label = batch['aux_label'].detach().cpu()
-                    logits_aux = result['aux_logits'].detach().cpu()
-                    aux_acc.append(result['aux_acc'])
-                    self.draw_pts(logits_aux, aux_label, img, grid_num, col_sample_step, i)
-            else:
-                self.draw_pts(logits, label, img, grid_num, col_sample_step, i)
-                if has_aux:
-                    aux_label = batch['aux_label'].detach().cpu()
-                    logits_aux = result['aux_logits'].detach().cpu()
-                    aux_acc.append(result['aux_acc'])
-                    self.draw_seg(logits_aux, aux_label, img, i)
+            self.draw_pts(logits, label, img, grid_num, col_sample_step, i)
 
         logging.getLogger(self.default_log_name).info(
             f'test acc = {sum(acc) / len(acc)}, aux acc = {sum(aux_acc) / len(aux_acc)}')

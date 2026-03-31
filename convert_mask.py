@@ -1,8 +1,8 @@
 import os
 import json
 import random
-import shutil
-
+import math
+import tqdm
 import cv2
 import numpy as np
 
@@ -26,16 +26,82 @@ def polyfit(line: list):
     return slope, intercept
 
 
-def create_mask(in_path, out_path):
+def rotate_image(image: np.ndarray, clockwise=True):
     """
-    :param in_path: 使用 x-anylabel 标注的折线数据 (jpg, json) 标签从 1 开始
-    :param out_path:
-    :return:
+    旋转图像90度并同步转换点坐标
+
+    Args:
+        image: 原始图像
+        clockwise: 是否顺时针旋转（默认True）
+
+    Returns:
+        rotated_img: 旋转后的图像
+        rotated_points: 旋转后的点坐标，shape=(n, 2)
+    """
+    # 旋转图像90度
+    if clockwise:
+        # 顺时针旋转90度，旋转后尺寸为(w, h)
+        rotated_img = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    else:
+        # 逆时针旋转90度
+        rotated_img = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+    return rotated_img
+
+
+def rotate_points(shape, points: list[tuple], clockwise=True):
+    """
+    旋转图像90度并同步转换点坐标
+
+    参数:
+        shape: 原始图像shape
+        points: 点 ，每个点为(x, y)，shape=(n, 2)
+        clockwise: 是否顺时针旋转（默认True）
+
+    返回:
+        rotated_img: 旋转后的图像
+        rotated_points: 旋转后的点坐标，shape=(n, 2)
+    """
+    h, w = shape[:2]
+
+    # 转换关键点坐标
+    rotated_points = []
+    for (x, y) in points:
+        if clockwise:
+            # 顺时针旋转90度坐标变换公式: (x, y) → (y, w - 1 - x)
+            new_x = h - 1 - y
+            new_y = x
+        else:
+            # 逆时针旋转90度坐标变换公式: (x, y) → (h - 1 - y, x)
+            new_x = y
+            new_y = w - 1 - x
+        rotated_points.append([new_x, new_y])
+
+    return rotated_points
+
+
+def create_mask(in_path, out_path, out_weight):
+    """
+    生成边缘mask
+
+    Args
+        in_path: 使用 x-anylabel 标注的折线数据 (jpg, json) 标签从 1 开始
+        out_path:
+        out_weight: 掩码测试路径
     """
     os.makedirs(out_path, exist_ok=True)
+    os.makedirs(out_weight, exist_ok=True)
+
+    def decay(p0, p1, max_dis):
+        dis = ((p0[0] - p1[0]) ** 2 + (p0[1] - p1[1]) ** 2) ** 0.5
+        return 1 - min(1.0, math.exp(dis / max_dis * 1.4) - 1)
+
+    def decay_y(y0, y1):
+        return math.exp(-2 * (1 - y0 / y1))
 
     json_names = [name for name in os.listdir(in_path) if name.endswith('json')]
-    for name in json_names:
+    for name in tqdm.tqdm(json_names):
+
         with open(f'{in_path}/{name}', mode='r') as f:
             anns = json.load(f)
 
@@ -46,17 +112,21 @@ def create_mask(in_path, out_path):
                 tmp[label] = list()
             tmp[label].extend(shape['points'])
 
+        arr = name.split('.')
+        img = cv2.imread(f'{in_path}/{arr[0]}.jpg', cv2.IMREAD_GRAYSCALE)
+
         shapes = dict()
         for k, pts in tmp.items():
             shapes[k] = sorted(pts, key=lambda xy: xy[1], reverse=False)
 
         del tmp
-        arr = name.split('.')
-        mask_name = f'{out_path}/{arr[0]}.png'
 
-        img = cv2.imread(f'{in_path}/{arr[0]}.jpg', cv2.IMREAD_GRAYSCALE)
+        mask_name = f'{out_path}/{arr[0]}-line.png'
+        h, w = img.shape
+        # max_len = max(h, w)  # (h * h + w * w) ** 0.5
         mask = np.zeros_like(img)
-        offset_base = 20
+        offset_base = w // 200  # 图片被均匀分成100份, 参照训练的配置文件
+        # labels = list(shapes.keys())
         for label, points in shapes.items():
             """
             皮带边缘标签 依次是 1, 2, 3, 4, ... 
@@ -64,64 +134,27 @@ def create_mask(in_path, out_path):
             扩张的时候 往皮带内部扩张  
             通过两个皮带边缘的距离来确定offset的大小,防止在远处两个皮带边缘沾连
             """
+
+            start = points[-1]
             if label % 2 == 0:  # 是偶数 则往右边扩张
                 offset = -offset_base
             else:  # 是奇数则往左阔边扩张
                 offset = offset_base
 
-            if label % 2 == 1:  # 是奇数 则和它同属一条皮带的label = label + 1
-                nb_label = label + 1
-            else:
-                nb_label = label - 1
+            in_pts = [[pt[0] + offset * decay_y(pt[1], start[1]), pt[1]] for pt in points]
+            in_pts = in_pts[::-1]
+            pts = points + in_pts
+            pts = np.asarray(pts, dtype=np.int32)
 
-            nb_points = shapes.get(nb_label, None)
-            if nb_points is not None:
-                nb_k, nb_b = polyfit(nb_points)
-
-                front_x = points[-1][0]
-                back_x = points[0][0]
-
-                if nb_k is None:
-                    nb_front_x = shapes[nb_label][-1][0]
-                    nb_back_x = shapes[nb_label][0][0]
-                else:
-                    nb_front_x = (points[-1][1] - nb_b) / nb_k
-                    nb_back_x = (points[0][1] - nb_b) / nb_k
-
-                back_offset = abs(back_x - nb_back_x)
-                front_offset = abs(front_x - nb_front_x)
-
-                if back_offset <= abs(offset * 5) or front_offset > back_offset * 5:
-                    back_y = back_offset / front_offset
-                    front_y = 1
-
-                    if front_x != back_x:
-                        k = (front_y - back_y) / (front_x - back_x)
-                        b = front_y - front_x * k
-                    else:
-                        k = 0
-                        b = 1
-
-                    in_pts = [[pt[0] + offset * (k * pt[0] + b), pt[1]] for pt in points]
-                    in_pts = in_pts[::-1]
-                    pts = points + in_pts
-                else:
-                    in_pts = [[pt[0] + offset, pt[1]] for pt in points]
-                    in_pts = in_pts[::-1]
-                    pts = points + in_pts
-
-                pts = np.asarray(pts, dtype=np.int32)
-            else:
-                in_pts = [[pt[0] + offset, pt[1]] for pt in points]
-                in_pts = in_pts[::-1]
-                pts = points + in_pts
-
-                pts = np.asarray(pts, dtype=np.int32)
             """
             不要用 LINE_AA, 他会使用高斯模糊， 当label超过1时，边缘的值会被模糊 不等于label
             """
             # cv2.polylines(mask, [pts], isClosed=False, color=label, thickness=4, lineType=cv2.LINE_8)
             cv2.fillPoly(mask, [pts], color=label, lineType=cv2.LINE_8)
+
+        if flip == 'vflip':
+            direct = dict(vflip=True)
+            mask = rotate_image(mask, clockwise=not direct[flip])
 
         cv2.imwrite(mask_name, mask)
 
@@ -134,7 +167,7 @@ def create_mask(in_path, out_path):
             img[:, :, 1] = np.where(mask == label, g, img[:, :, 1])
             img[:, :, 2] = np.where(mask == label, r, img[:, :, 2])
 
-        cv2.imwrite(f'{out_path}/{arr[0]}_weight.jpg', img)
+        cv2.imwrite(f'{out_weight}/{arr[0]}_weight.jpg', img)
 
     return
 
@@ -164,13 +197,13 @@ def create_anchor(in_path, cls_lane=56):
 
 
 if __name__ == '__main__':
-    in_root = '/mnt/sda/datasets/皮带跑偏数据集合/part3'
-    out_root = '/mnt/sda/datasets/皮带跑偏数据集合/part3'
-    create_mask(in_root, out_root)
+    in_root = '/mnt/sda/datasets/边缘数据集合/part3'
+    out_root = '/mnt/sda/datasets/边缘数据集合/part3'
+    create_mask(in_root, out_root, f'{out_root}-weight')
 
     # create_anchor(in_root, 60)
 
-    in_root = '/mnt/sda/datasets/皮带跑偏数据集合'
+    in_root = '/mnt/sda/datasets/边缘数据集合'
     names = list()
     for pname in ['part0', 'part2', 'part3']:
         names.extend([f'{pname}/{name}' for name in os.listdir(f'{in_root}/{pname}') if name.endswith('png')])
